@@ -147,6 +147,14 @@ function MessageView({ channel, user, onBack }) {
         setMessages((prev) => [...prev, data]);
       }
     };
+    socket.onerror = (err) => {
+      console.error('WebSocket error:', err);
+    };
+    socket.onclose = (event) => {
+      if (event.code !== 1000) {
+        console.warn('WebSocket closed unexpectedly:', event.code, event.reason);
+      }
+    };
     setWs(socket);
     return () => socket.close();
   }, [channel]);
