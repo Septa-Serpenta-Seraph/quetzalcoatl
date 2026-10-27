@@ -1,7 +1,8 @@
 """Hermes-Quetzalcoatl bridge: polls for mentions and responds.
 
 Usage:
-    python hermes_bridge.py --url http://localhost:8000 --email you@example.com --password yourpass
+    python hermes_bridge.py --username yourname --password yourpass
+    # or --email yourname (if email is used as username)
 
 This runs as a persistent service that:
 1. Logs in with user credentials
@@ -44,14 +45,20 @@ def api_request(base_url, method, path, data=None, token=None):
 def main():
     parser = argparse.ArgumentParser(description="Hermes-Quetzalcoatl bridge")
     parser.add_argument("--url", default="http://localhost:8000", help="Quetzalcoatl base URL")
-    parser.add_argument("--email", required=True, help="User email")
+    parser.add_argument("--username", "-u", help="Username (or email if used as username)")
+    parser.add_argument("--email", "-e", help="Email address (alias for --username; login endpoint uses username)")
     parser.add_argument("--password", required=True, help="User password")
     parser.add_argument("--interval", type=int, default=5, help="Poll interval in seconds")
     args = parser.parse_args()
 
+    # Accept --username or --email (login endpoint uses username field)
+    login_username = args.username or args.email
+    if not login_username:
+        parser.error("Either --username or --email is required")
+
     # Login
-    print(f"Logging in to {args.url}...")
-    login_data = {"username": args.email, "password": args.password}
+    print(f"Logging in to {args.url} as {login_username}...")
+    login_data = {"username": login_username, "password": args.password}
     # OAuth2 form login
     import urllib.parse
     form_data = urllib.parse.urlencode(login_data).encode()
@@ -96,7 +103,10 @@ def main():
                     if history:
                         print(f"Channel history ({len(history)} messages) loaded for context.")
 
-                    # Generate response (placeholder - replace with Hermes LLM call)
+                    # ============================================================
+                    # PLACEHOLDER RESPONSE — needs LLM call wired in
+                    # Replace this with actual Hermes LLM call for real responses
+                    # ============================================================
                     response_text = f"Hey {mention['author_username']}! I saw your message. I'm Narusya, your friendly neighborhood AI. 🐍💛"
 
                     # Post response

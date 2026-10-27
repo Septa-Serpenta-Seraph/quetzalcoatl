@@ -96,12 +96,14 @@ def create_server(req: CreateServerRequest, current_user: User = Depends(get_cur
     voice = Channel(server_id=server.id, name="General", type="voice", position=1)
     db.add_all([general, voice])
 
-    # Create default role
+    # Create default role with basic permissions (read, send, join voice)
+    # Permission bits: 1=read, 2=send, 4=manage_channels, 8=manage_server, 16=manage_roles
+    # @everyone gets read + send by default (like Discord)
     default_role = Role(
         server_id=server.id,
         name="@everyone",
         is_default=True,
-        permissions=0,
+        permissions=3,  # read (1) + send (2)
     )
     db.add(default_role)
 

@@ -178,6 +178,31 @@ def send_dm(
     db.commit()
     db.refresh(msg)
 
+    # Get all participant IDs for DM broadcast
+    participant_ids = [p.user_id for p in db.query(conversation_participants).filter(
+        conversation_participants.c.conversation_id == conversation_id
+    ).all()]
+
+    # Broadcast to WebSocket subscribers so DM messages appear in real-time
+    try:
+        from gateway.websocket import manager
+        import asyncio
+        dm_data = {
+            "type": "dm",
+            "id": msg.id,
+            "conversation_id": msg.conversation_id,
+            "author_id": msg.author_id,
+            "author_username": msg.author.username,
+            "author_display_name": msg.author.display_name,
+            "content": msg.content,
+            "created_at": msg.created_at.isoformat(),
+            "updated_at": msg.updated_at.isoformat(),
+        }
+        for pid in participant_ids:
+            asyncio.ensure_future(manager.send_to_user(pid, dm_data))
+    except Exception:
+        pass  # WebSocket broadcast is best-effort
+
     return DMMessageResponse(
         id=msg.id,
         conversation_id=msg.conversation_id,

@@ -21,9 +21,18 @@ app = FastAPI(
 )
 
 # CORS
+_cors_origins = os.getenv("CORS_ORIGINS", "*").split(",")
+if "*" in _cors_origins and len(_cors_origins) == 1:
+    import warnings
+    warnings.warn(
+        "CORS_ORIGINS is set to '*' with allow_credentials=True. "
+        "This is a spec violation — browsers will reject it. "
+        "Set CORS_ORIGINS to your domain(s) in production.",
+        stacklevel=2,
+    )
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.getenv("CORS_ORIGINS", "*").split(","),
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

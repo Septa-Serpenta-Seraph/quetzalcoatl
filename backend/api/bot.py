@@ -109,9 +109,12 @@ def post_bot_message(req: BotMessageRequest, current_user: User = Depends(get_cu
         ).first()
         if not member:
             # Bot might not be a member yet - add it
-            bot = get_bot_user(db)
-            if bot not in server.members and server.owner_id != bot.id:
-                server.members.append(bot)
+            bot_member = db.query(server_members).filter(
+                server_members.c.user_id == current_user.id,
+                server_members.c.server_id == server.id,
+            ).first()
+            if not bot_member:
+                server.members.append(get_bot_user(db))
                 db.commit()
 
     msg = Message(
@@ -202,38 +205,46 @@ def get_pending_mentions(current_user: User = Depends(get_current_user), db: Ses
     if not current_user.is_bot:
         raise HTTPException(status_code=403, detail="Only bot users can access this endpoint")
 
-    # Find messages containing mention triggers that were NOT authored by the bot
-    # and don't have a bot reply after them
+    # Use eager loading to avoid N+1 queries
+    from sqlalchemy.orm import joinedload
+
     all_messages = (
         db.query(Message)
-        .join(Channel)
-        .join(Server)
+        .options(joinedload(Message.author), joinedload(Message.channel))
         .filter(Message.author_id != current_user.id)
         .order_by(Message.created_at.desc())
         .limit(100)
         .all()
     )
 
+    # Batch-fetch all servers for the channels
+    server_ids = {m.channel.server_id for m in all_messages if m.channel}
+    servers = {s.id: s for s in db.query(Server).filter(Server.id.in_(server_ids)).all()}
+
     pending = []
     for m in all_messages:
         if not check_mention(m.content or ""):
             continue
 
+        channel = m.channel
+        server = servers.get(channel.server_id)
+        if not channel or not server:
+            continue
+
         # Check if bot already replied in this channel after this message
+        # Use a single subquery instead of per-message query
         bot_reply = (
-            db.query(Message)
+            db.query(Message.id)
             .filter(
                 Message.channel_id == m.channel_id,
                 Message.author_id == current_user.id,
                 Message.id > m.id,
             )
+            .limit(1)
             .first()
         )
         if bot_reply:
             continue
-
-        channel = db.query(Channel).filter(Channel.id == m.channel_id).first()
-        server = db.query(Server).filter(Server.id == channel.server_id).first()
 
         pending.append(PendingMention(
             message_id=m.id,
@@ -256,14 +267,22 @@ def list_bot_channels(current_user: User = Depends(get_current_user), db: Sessio
         raise HTTPException(status_code=403, detail="Only bot users can access this endpoint")
 
     bot = get_bot_user(db)
-    # Get all servers the bot is a member of
-    servers = bot.servers + bot.owned_servers
-    seen = set()
+    # Use a single query to get all servers the bot is a member or owner of
+    from sqlalchemy import or_
+    servers = (
+        db.query(Server)
+        .outerjoin(server_members, Server.id == server_members.c.server_id)
+        .filter(
+            or_(
+                server_members.c.user_id == bot.id,
+                Server.owner_id == bot.id,
+            )
+        )
+        .distinct()
+        .all()
+    )
     result = []
     for s in servers:
-        if s.id in seen:
-            continue
-        seen.add(s.id)
         channels = db.query(Channel).filter(Channel.server_id == s.id).all()
         result.append({
             "server_id": s.id,
@@ -284,7 +303,11 @@ def bot_join_server(server_id: int, current_user: User = Depends(get_current_use
         raise HTTPException(status_code=404, detail="Server not found")
 
     bot = get_bot_user(db)
-    if bot not in server.members and server.owner_id != bot.id:
+    bot_member = db.query(server_members).filter(
+        server_members.c.user_id == bot.id,
+        server_members.c.server_id == server_id,
+    ).first()
+    if not bot_member:
         server.members.append(bot)
         db.commit()
 
