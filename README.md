@@ -187,9 +187,11 @@ graph LR
 - [x] Web client (browser-based, mobile-responsive)
 - [x] REST API
 - [x] WebSocket real-time gateway
-- [ ] Direct messages (1:1 and group DMs) — models exist, API routes coming
+- [ ] Direct messages (1:1 and group DMs) — models exist (DirectMessage, Conversation, DMAttachment), API routes coming
 - [ ] File attachments (images, documents, uploads)
 - [ ] Hermes integration (AI participant) — planned as native channel member
+- [ ] Invite expiry + revocation (invite rot is the first moderation problem)
+- [ ] Sync-after-gap (message reconciliation on WebSocket reconnect — "what did I miss while the socket was dead")
 
 #### Tier 2: Important (v1.0)
 - [ ] Voice channels (WebRTC audio)
@@ -217,7 +219,7 @@ graph LR
 - [ ] Custom themes / CSS
 - [ ] Mobile apps (PWA first, native later)
 - [ ] Android APK (sideloadable, via Capacitor)
-- [ ] E2E encryption
+- [ ] E2E encryption (see Design Tensions: AI-native vs. E2E)
 - [ ] Rich Presence (game activity)
 - [ ] Channel categories
 - [ ] Member screening (rules acceptance)
@@ -360,6 +362,23 @@ Server broadcasts:
 { "type": "typing", "user_id": 1, "channel_id": 1 }
 { "type": "pong" }
 ```
+
+## Design Tensions
+
+These are known architectural trade-offs that need early design conversations, not afterthoughts.
+
+### AI-Native vs. E2E Encryption
+Quetzalcoatl positions Hermes as a **first-class participant** (a backbone member that reads messages, generates responses, and acts as a native channel member). This is fundamentally in tension with **end-to-end encryption**, where a participant cannot read what it cannot decrypt.
+
+- **Tier 1-2:** No E2E encryption. Hermes has full message access. This is the correct starting point — the AI participant *is* the feature.
+- **Tier 3 (when E2E arrives):** Key management for group chats with a bot participant requires a deliberate design decision. Options include: (a) Hermes holds a separate key pair and is explicitly a trusted third party, (b) selective decryption where Hermes only sees messages @-mentioning it, (c) a "bot-readable" channel flag that opts specific channels out of E2E.
+- **The principle:** This tension is architectural, not a checkbox. It must be designed before E2E is implemented, not bolted on after.
+
+### Sync-After-Gap
+When a client reconnects after being offline, it must reconcile "what did I miss." The PWA service worker's offline cache will surface this problem. The WebSocket gateway needs a `sync` message type that accepts a `last_seen_message_id` and returns all messages since that point, per subscribed channel.
+
+### Invite Lifecycle
+Invite codes currently have no expiry or revocation. "Invite rot" (stale invites circulating indefinitely) is the first moderation problem. Tier 1 should add: expiry timestamps, max-use counts, and revocation.
 
 ## License
 
