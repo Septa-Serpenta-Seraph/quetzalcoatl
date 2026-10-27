@@ -25,3 +25,6 @@ Thumbs.db
 # Uploaded files
 uploads/
 backend/uploads/
+
+# Test files
+test_comprehensive.py
