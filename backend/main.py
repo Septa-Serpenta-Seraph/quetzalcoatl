@@ -11,6 +11,7 @@ from api.auth_routes import router as auth_router
 from api.servers import router as servers_router
 from api.messages import router as messages_router
 from api.bot import router as bot_router
+from api.dms import router as dms_router
 
 # Create app
 app = FastAPI(
@@ -33,6 +34,7 @@ app.include_router(auth_router)
 app.include_router(servers_router)
 app.include_router(messages_router)
 app.include_router(bot_router)
+app.include_router(dms_router)
 
 @app.websocket("/ws")
 async def websocket_route(websocket: WebSocket, token: str = Query(...)):

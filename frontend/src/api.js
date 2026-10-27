@@ -71,6 +71,17 @@ export const api = {
   createChannel: (serverId, data) => request('POST', `/api/servers/${serverId}/channels`, data),
   joinServer: (inviteCode) => request('POST', `/api/servers/join/${inviteCode}`),
 
+  // Direct Messages
+  listConversations: () => request('GET', '/api/dms/conversations'),
+  createConversation: (data) => request('POST', '/api/dms/conversations', data),
+  getDMMessages: (convId, before = null, limit = 50) => {
+    let path = `/api/dms/conversations/${convId}/messages?limit=${limit}`;
+    if (before) path += `&before=${before}`;
+    return request('GET', path);
+  },
+  sendDM: (convId, data) => request('POST', `/api/dms/conversations/${convId}/messages`, data),
+  searchUsers: (q) => request('GET', `/api/dms/users/search?q=${encodeURIComponent(q)}`),
+
   // Messages
   getMessages: (channelId, before = null, limit = 50) => {
     let path = `/api/channels/${channelId}/messages?limit=${limit}`;

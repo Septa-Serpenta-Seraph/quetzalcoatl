@@ -120,11 +120,11 @@ function ServerList({ servers, selectedServer, onSelect, onCreate, onJoin }) {
   );
 }
 
-function ChannelList({ server, channels, selectedChannel, onSelect, onBack }) {
-  if (!server) {
+function ChannelList({ server, channels, selectedChannel, onSelect, onBack, conversations = [], selectedConv = null, onSelectConv, onNewDM }) {
+  if (!server && !conversations.length) {
     return (
       <div style={{ width: 260, height: '100%', background: '#2f3136', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8e9297', fontSize: 14, boxSizing: 'border-box', borderRight: '1px solid #1a1a1a' }}>
-        Select a server
+        Select a server or start a DM
       </div>
     );
   }
@@ -133,23 +133,42 @@ function ChannelList({ server, channels, selectedChannel, onSelect, onBack }) {
   const textChannels = channels.filter((c) => c.type === 'text');
   const voiceChannels = channels.filter((c) => c.type === 'voice');
 
+  const convName = (conv) => {
+    if (conv.is_group) return conv.name || 'Group DM';
+    const other = conv.participants.find(p => p.id !== (JSON.parse(localStorage.getItem('quetzalcoatl_user') || '{}').id));
+    return other ? (other.display_name || other.username) : 'DM';
+  };
+
   if (mobile) {
     return (
       <div style={{ width: '100%', height: '100%', background: '#2f3136', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
         <div style={{ padding: 16, borderBottom: '1px solid #202225', fontWeight: 'bold', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span>{server.name}</span>
+          <span>{server ? server.name : 'Direct Messages'}</span>
           <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#b9bbbe', fontSize: 20, padding: 4 }}>←</button>
         </div>
-        <div style={{ padding: '4px 16px', fontSize: 12, color: '#8e9297' }}>Invite: {server.invite_code}</div>
         <div style={{ flex: 1, overflowY: 'auto', padding: 8 }}>
-          {textChannels.map((c) => (
-            <button key={c.id} onClick={() => onSelect(c)} style={{ display: 'block', width: '100%', padding: '10px 8px', borderRadius: 4, cursor: 'pointer', color: selectedChannel?.id === c.id ? '#fff' : '#8e9297', background: selectedChannel?.id === c.id ? '#393c43' : 'transparent', border: 'none', textAlign: 'left', fontSize: 14, minHeight: 44 }}>
-              # {c.name}
+          {server && (
+            <>
+              <div style={{ fontSize: 11, color: '#8e9297', padding: '8px 8px 4px', textTransform: 'uppercase', fontWeight: 'bold' }}>Channels</div>
+              {textChannels.map((c) => (
+                <button key={c.id} onClick={() => onSelect(c)} style={{ display: 'block', width: '100%', padding: '10px 8px', borderRadius: 4, cursor: 'pointer', color: selectedChannel?.id === c.id ? '#fff' : '#8e9297', background: selectedChannel?.id === c.id ? '#393c43' : 'transparent', border: 'none', textAlign: 'left', fontSize: 14, minHeight: 44 }}>
+                  # {c.name}
+                </button>
+              ))}
+              {voiceChannels.map((c) => (
+                <div key={c.id} style={{ padding: '10px 8px', color: '#8e9297', fontSize: 14, minHeight: 44 }}>🔊 {c.name}</div>
+              ))}
+            </>
+          )}
+          <div style={{ fontSize: 11, color: '#8e9297', padding: '8px 8px 4px', textTransform: 'uppercase', fontWeight: 'bold', marginTop: 8 }}>Direct Messages</div>
+          {conversations.map((conv) => (
+            <button key={conv.id} onClick={() => onSelectConv(conv)} style={{ display: 'block', width: '100%', padding: '10px 8px', borderRadius: 4, cursor: 'pointer', color: selectedConv?.id === conv.id ? '#fff' : '#8e9297', background: selectedConv?.id === conv.id ? '#393c43' : 'transparent', border: 'none', textAlign: 'left', fontSize: 14, minHeight: 44 }}>
+              💬 {convName(conv)}
             </button>
           ))}
-          {voiceChannels.map((c) => (
-            <div key={c.id} style={{ padding: '10px 8px', color: '#8e9297', fontSize: 14, minHeight: 44 }}>🔊 {c.name}</div>
-          ))}
+          <button onClick={onNewDM} style={{ display: 'block', width: '100%', padding: '10px 8px', borderRadius: 4, cursor: 'pointer', color: '#3ba55c', background: 'transparent', border: 'none', textAlign: 'left', fontSize: 14, minHeight: 44 }}>
+            + New DM
+          </button>
         </div>
       </div>
     );
@@ -157,30 +176,119 @@ function ChannelList({ server, channels, selectedChannel, onSelect, onBack }) {
 
   return (
     <div style={{ width: 260, height: '100%', background: '#2f3136', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', borderRight: '1px solid #1a1a1a' }}>
-      <div style={{ padding: 16, borderBottom: '1px solid #202225', fontWeight: 'bold', color: '#fff' }}>{server.name}</div>
-      <div style={{ padding: '4px 16px 8px', fontSize: 12, color: '#8e9297', borderBottom: '1px solid #202225' }}>
-        Invite code: <span style={{ color: '#5865f2', fontWeight: 'bold', cursor: 'pointer' }} onClick={() => { navigator.clipboard?.writeText(server.invite_code); }} title="Click to copy">{server.invite_code}</span>
-      </div>
-      <div style={{ flex: 1, overflowY: 'auto', padding: 8 }}>
-        {textChannels.length > 0 && (
-          <>
-            <div style={{ color: '#8e9297', fontSize: 11, fontWeight: 'bold', padding: '8px 8px 4px', textTransform: 'uppercase' }}>Text Channels</div>
+      {server && (
+        <>
+          <div style={{ padding: 16, borderBottom: '1px solid #202225', fontWeight: 'bold', color: '#fff' }}>{server.name}</div>
+          <div style={{ padding: '4px 16px 8px', fontSize: 12, color: '#8e9297', borderBottom: '1px solid #202225' }}>Invite: {server.invite_code}</div>
+          <div style={{ flex: 1, overflowY: 'auto', padding: 8 }}>
+            <div style={{ fontSize: 11, color: '#8e9297', padding: '8px 8px 4px', textTransform: 'uppercase', fontWeight: 'bold' }}>Text Channels</div>
             {textChannels.map((c) => (
               <button key={c.id} onClick={() => onSelect(c)} style={{ display: 'block', width: '100%', padding: '8px', borderRadius: 4, cursor: 'pointer', color: selectedChannel?.id === c.id ? '#fff' : '#8e9297', background: selectedChannel?.id === c.id ? '#393c43' : 'transparent', border: 'none', textAlign: 'left', fontSize: 14 }}>
                 # {c.name}
               </button>
             ))}
-          </>
-        )}
-        {voiceChannels.length > 0 && (
-          <>
-            <div style={{ color: '#8e9297', fontSize: 11, fontWeight: 'bold', padding: '8px 8px 4px', textTransform: 'uppercase', marginTop: 8 }}>Voice Channels</div>
-            {voiceChannels.map((c) => (
-              <div key={c.id} style={{ padding: '8px', color: '#8e9297', fontSize: 14 }}>🔊 {c.name}</div>
-            ))}
-          </>
-        )}
+            {voiceChannels.length > 0 && (
+              <>
+                <div style={{ fontSize: 11, color: '#8e9297', padding: '8px 8px 4px', textTransform: 'uppercase', fontWeight: 'bold', marginTop: 8 }}>Voice Channels</div>
+                {voiceChannels.map((c) => (
+                  <div key={c.id} style={{ padding: '8px', color: '#8e9297', fontSize: 14 }}>🔊 {c.name}</div>
+                ))}
+              </>
+            )}
+          </div>
+        </>
+      )}
+      {!server && (
+        <div style={{ padding: 16, color: '#8e9297', fontSize: 14 }}>Select a server to see channels</div>
+      )}
+      <div style={{ borderTop: '1px solid #202225', padding: 8 }}>
+        <div style={{ fontSize: 11, color: '#8e9297', padding: '4px 8px', textTransform: 'uppercase', fontWeight: 'bold' }}>Direct Messages</div>
+        {conversations.map((conv) => (
+          <button key={conv.id} onClick={() => onSelectConv(conv)} style={{ display: 'block', width: '100%', padding: '8px', borderRadius: 4, cursor: 'pointer', color: selectedConv?.id === conv.id ? '#fff' : '#8e9297', background: selectedConv?.id === conv.id ? '#393c43' : 'transparent', border: 'none', textAlign: 'left', fontSize: 14 }}>
+            💬 {convName(conv)}
+          </button>
+        ))}
+        <button onClick={onNewDM} style={{ display: 'block', width: '100%', padding: '8px', borderRadius: 4, cursor: 'pointer', color: '#3ba55c', background: 'transparent', border: 'none', textAlign: 'left', fontSize: 14 }}>
+          + New DM
+        </button>
       </div>
+    </div>
+  );
+}
+function DMView({ conversation, user, onBack }) {
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+  const messagesEndRef = useRef(null);
+  const mobile = isMobile();
+
+  useEffect(() => {
+    if (!conversation) return;
+    setMessages([]);
+    api.getDMMessages(conversation.id).then(setMessages).catch(console.error);
+  }, [conversation]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const handleSend = async (e) => {
+    e.preventDefault();
+    if (!input.trim()) return;
+    try {
+      const msg = await api.sendDM(conversation.id, { content: input.trim() });
+      setMessages((prev) => [...prev, msg]);
+      setInput('');
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const convName = () => {
+    if (!conversation) return 'DM';
+    if (conversation.is_group) return conversation.name || 'Group DM';
+    const other = conversation.participants.find(p => p.id !== user.id);
+    return other ? (other.display_name || other.username) : 'DM';
+  };
+
+  if (!conversation) {
+    return (
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8e9297', background: '#36393f', fontSize: 14 }}>
+        Select a conversation
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#36393f', height: '100%', boxSizing: 'border-box' }}>
+      <div style={{ padding: 16, borderBottom: '1px solid #202225', color: '#fff', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 8 }}>
+        {mobile && <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#b9bbbe', fontSize: 20, padding: 4 }}>←</button>}
+        💬 {convName()}
+      </div>
+      <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
+        {messages.map((m) => {
+          const isBot = m.author_username === 'narusya' || m.is_bot;
+          return (
+            <div key={m.id} style={{ marginBottom: 12, display: 'flex', gap: 12, background: isBot ? 'rgba(88,101,242,0.08)' : 'transparent', borderRadius: 8, padding: isBot ? 8 : 0 }}>
+              <div style={{ width: 40, height: 40, borderRadius: '50%', background: isBot ? '#7289da' : '#5865f2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold', flexShrink: 0, fontSize: isBot ? 18 : 14 }}>
+                {isBot ? '🐍' : (m.author_display_name || m.author_username || '?').charAt(0).toUpperCase()}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ color: isBot ? '#7289da' : '#fff', fontWeight: 'bold' }}>{m.author_display_name || m.author_username}</span>
+                  {isBot && <span style={{ background: '#5865f2', color: '#fff', fontSize: 10, padding: '1px 6px', borderRadius: 4, fontWeight: 'bold' }}>BOT</span>}
+                  <span style={{ color: '#8e9297', fontSize: 12 }}>{new Date(m.created_at).toLocaleTimeString()}</span>
+                </div>
+                <div style={{ color: '#dcddde', marginTop: 2, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{m.content}</div>
+              </div>
+            </div>
+          );
+        })}
+        <div ref={messagesEndRef} />
+      </div>
+      <form onSubmit={handleSend} style={{ padding: 12, borderTop: '1px solid #202225', display: 'flex', gap: 8 }}>
+        <input value={input} onChange={(e) => setInput(e.target.value)} placeholder={`Message ${convName()}`} style={{ flex: 1, padding: '10px 16px', borderRadius: 8, border: 'none', background: '#40444b', color: '#fff', fontSize: 16, boxSizing: 'border-box' }} />
+        <button type="submit" style={{ padding: '10px 16px', borderRadius: 8, border: 'none', background: '#5865f2', color: '#fff', cursor: 'pointer', fontWeight: 'bold', fontSize: 16 }}>Send</button>
+      </form>
     </div>
   );
 }
@@ -289,6 +397,9 @@ export default function App() {
   const [selectedServer, setSelectedServer] = useState(null);
   const [channels, setChannels] = useState([]);
   const [selectedChannel, setSelectedChannel] = useState(null);
+  const [conversations, setConversations] = useState([]);
+  const [selectedConv, setSelectedConv] = useState(null);
+  const [dmMode, setDmMode] = useState(false);
   const [mobileView, setMobileView] = useState('servers');
   const [joinError, setJoinError] = useState(null);
   const mobile = isMobile();
@@ -298,6 +409,7 @@ export default function App() {
   useEffect(() => {
     if (!user) return;
     api.listServers().then(setServers).catch(console.error);
+    api.listConversations().then(setConversations).catch(console.error);
   }, [user]);
 
   useEffect(() => {
@@ -316,7 +428,6 @@ export default function App() {
     setJoinError(null);
     try {
       const server = await api.joinServer(inviteCode);
-      // Refresh server list
       const updated = await api.listServers();
       setServers(updated);
       setSelectedServer(server);
@@ -328,12 +439,38 @@ export default function App() {
   const handleSelectServer = (server) => {
     setSelectedServer(server);
     setSelectedChannel(null);
+    setSelectedConv(null);
+    setDmMode(false);
     if (mobile) setMobileView(server ? 'channels' : 'servers');
   };
 
   const handleSelectChannel = (channel) => {
     setSelectedChannel(channel);
+    setSelectedConv(null);
+    setDmMode(false);
     if (mobile) setMobileView('messages');
+  };
+
+  const handleSelectConv = (conv) => {
+    setSelectedConv(conv);
+    setSelectedChannel(null);
+    setDmMode(true);
+    if (mobile) setMobileView('messages');
+  };
+
+  const handleNewDM = async () => {
+    const q = prompt('Search user to DM:');
+    if (!q) return;
+    try {
+      const users = await api.searchUsers(q);
+      if (users.length === 0) { alert('No users found'); return; }
+      const u = users[0];
+      const conv = await api.createConversation({ user_ids: [u.id] });
+      setConversations((prev) => [conv, ...prev.filter(c => c.id !== conv.id)]);
+      handleSelectConv(conv);
+    } catch (e) {
+      alert(e.message);
+    }
   };
 
   if (!user) return <LoginScreen />;
@@ -345,10 +482,10 @@ export default function App() {
           <ServerList servers={servers} selectedServer={selectedServer} onSelect={handleSelectServer} onCreate={handleCreateServer} onJoin={handleJoinServer} />
         )}
         {mobileView === 'channels' && (
-          <ChannelList server={selectedServer} channels={channels} selectedChannel={selectedChannel} onSelect={handleSelectChannel} onBack={() => setMobileView('servers')} />
+          <ChannelList server={selectedServer} channels={channels} selectedChannel={selectedChannel} onSelect={handleSelectChannel} onBack={() => setMobileView('servers')} conversations={conversations} selectedConv={selectedConv} onSelectConv={handleSelectConv} onNewDM={handleNewDM} />
         )}
         {mobileView === 'messages' && (
-          <MessageView channel={selectedChannel} user={user} onBack={() => setMobileView('channels')} />
+          dmMode ? <DMView conversation={selectedConv} user={user} onBack={() => setMobileView('channels')} /> : <MessageView channel={selectedChannel} user={user} onBack={() => setMobileView('channels')} />
         )}
         <div style={{ position: 'fixed', top: 8, right: 8, zIndex: 20 }}>
           <button onClick={logout} style={{ padding: '6px 12px', borderRadius: 4, border: 'none', background: '#f04747', color: '#fff', cursor: 'pointer', fontSize: 12 }}>Logout</button>
@@ -357,12 +494,12 @@ export default function App() {
     );
   }
 
-  // Desktop: simple 3-column layout
+  // Desktop: 3-column layout
   return (
     <div style={{ display: 'flex', height: '100vh', fontFamily: 'sans-serif', overflow: 'hidden' }}>
       <ServerList servers={servers} selectedServer={selectedServer} onSelect={handleSelectServer} onCreate={handleCreateServer} onJoin={handleJoinServer} />
-      <ChannelList server={selectedServer} channels={channels} selectedChannel={selectedChannel} onSelect={handleSelectChannel} onBack={() => {}} />
-      <MessageView channel={selectedChannel} user={user} onBack={() => {}} />
+      <ChannelList server={selectedServer} channels={channels} selectedChannel={selectedChannel} onSelect={handleSelectChannel} onBack={() => {}} conversations={conversations} selectedConv={selectedConv} onSelectConv={handleSelectConv} onNewDM={handleNewDM} />
+      {dmMode ? <DMView conversation={selectedConv} user={user} onBack={() => {}} /> : <MessageView channel={selectedChannel} user={user} onBack={() => {}} />}
       <div style={{ position: 'fixed', top: 10, right: 10, zIndex: 20 }}>
         <button onClick={logout} style={{ padding: '6px 12px', borderRadius: 4, border: 'none', background: '#f04747', color: '#fff', cursor: 'pointer' }}>Logout</button>
       </div>
