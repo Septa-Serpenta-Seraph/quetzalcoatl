@@ -25,7 +25,15 @@ async function request(method, path, body = null) {
   const res = await fetch(`${API_BASE}${path}`, opts);
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || 'Request failed');
+    let message = 'Request failed';
+    if (typeof err.detail === 'string') {
+      message = err.detail;
+    } else if (Array.isArray(err.detail)) {
+      message = err.detail.map((e) => e.msg || JSON.stringify(e)).join(', ');
+    } else if (err.detail) {
+      message = JSON.stringify(err.detail);
+    }
+    throw new Error(message);
   }
   if (res.status === 204) return null;
   return res.json();
@@ -43,7 +51,13 @@ export const api = {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: form,
     }).then(async (res) => {
-      if (!res.ok) throw new Error('Login failed');
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: res.statusText }));
+        let message = 'Login failed';
+        if (typeof err.detail === 'string') message = err.detail;
+        else if (Array.isArray(err.detail)) message = err.detail.map((e) => e.msg || JSON.stringify(e)).join(', ');
+        throw new Error(message);
+      }
       return res.json();
     });
   },
