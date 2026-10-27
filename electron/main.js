@@ -11,18 +11,23 @@ const BACKEND_URL = `http://localhost:${BACKEND_PORT}`;
 
 function startBackend() {
   const backendDir = path.join(__dirname, '..', 'backend');
-  const venvPython = path.join(backendDir, '.venv', 'bin', 'python');
-  const uvicorn = path.join(backendDir, '.venv', 'bin', 'uvicorn');
+  const isWindows = process.platform === 'win32';
+  const venvDir = path.join(backendDir, '.venv');
+  const pythonPath = isWindows
+    ? path.join(venvDir, 'Scripts', 'python.exe')
+    : path.join(venvDir, 'bin', 'python');
+  const uvicornPath = isWindows
+    ? path.join(venvDir, 'Scripts', 'uvicorn.exe')
+    : path.join(venvDir, 'bin', 'uvicorn');
 
-  // Use uvicorn from venv if available, otherwise fall back to system python
-  const cmd = require('fs').existsSync(uvicorn) ? uvicorn : 'python3';
-  const args = require('fs').existsSync(uvicorn)
+  const useUvicorn = require('fs').existsSync(uvicornPath);
+  const cmd = useUvicorn ? uvicornPath : pythonPath;
+  const args = useUvicorn
     ? ['main:app', '--host', '0.0.0.0', '--port', String(BACKEND_PORT)]
     : ['-m', 'uvicorn', 'main:app', '--host', '0.0.0.0', '--port', String(BACKEND_PORT)];
 
   const env = { ...process.env };
   if (!env.SECRET_KEY) {
-    // Generate a random secret key if not set
     const crypto = require('crypto');
     env.SECRET_KEY = crypto.randomBytes(32).toString('hex');
   }
