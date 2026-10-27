@@ -279,6 +279,21 @@ function DMView({ conversation, user, onBack }) {
                   <span style={{ color: '#8e9297', fontSize: 12 }}>{new Date(m.created_at).toLocaleTimeString()}</span>
                 </div>
                 <div style={{ color: '#dcddde', marginTop: 2, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{m.content}</div>
+                {m.attachments && m.attachments.length > 0 && (
+                  <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {m.attachments.map((a) => (
+                      a.content_type && a.content_type.startsWith('image/') ? (
+                        <a key={a.id} href={a.url.startsWith('http') ? a.url : `${window.location.origin}${a.url}`} target="_blank" rel="noopener noreferrer">
+                          <img src={a.url.startsWith('http') ? a.url : `${window.location.origin}${a.url}`} alt={a.filename} style={{ maxWidth: 300, maxHeight: 200, borderRadius: 8, cursor: 'pointer' }} />
+                        </a>
+                      ) : (
+                        <a key={a.id} href={a.url.startsWith('http') ? a.url : `${window.location.origin}${a.url}`} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: '#2f3136', borderRadius: 8, color: '#00aff4', textDecoration: 'none', fontSize: 13 }}>
+                          📎 {a.filename} ({Math.round(a.size / 1024)}KB)
+                        </a>
+                      )
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -343,6 +358,37 @@ function MessageView({ channel, user, onBack }) {
     setInput('');
   };
 
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !channel) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const token = localStorage.getItem('quetzalcoatl_token');
+      const res = await fetch(`/api/channels/${channel.id}/upload`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData,
+      });
+      if (!res.ok) throw new Error('Upload failed');
+      const uploaded = await res.json();
+      await api.sendMessage(channel.id, { content: input.trim() || file.name, attachments: [uploaded] });
+      const msgs = await api.getMessages(channel.id);
+      setMessages(msgs);
+      setInput('');
+    } catch (err) {
+      console.error('Upload error:', err);
+      alert('Upload failed: ' + err.message);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   if (!channel) {
     return (
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8e9297', background: '#36393f', fontSize: 14 }}>
@@ -383,7 +429,11 @@ function MessageView({ channel, user, onBack }) {
         })}
         <div ref={messagesEndRef} />
       </div>
-      <form onSubmit={handleSend} style={{ padding: 12, borderTop: '1px solid #202225', display: 'flex', gap: 8 }}>
+      <form onSubmit={handleSend} style={{ padding: 12, borderTop: '1px solid #202225', display: 'flex', gap: 8, alignItems: 'center' }}>
+        <input type="file" ref={fileInputRef} onChange={handleFileUpload} style={{ display: 'none' }} />
+        <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} style={{ padding: '10px 12px', borderRadius: 8, border: 'none', background: '#2f3136', color: '#b9bbbe', cursor: 'pointer', fontSize: 18 }} title="Attach file">
+          {uploading ? '⏳' : '📎'}
+        </button>
         <input value={input} onChange={(e) => setInput(e.target.value)} placeholder={`Message #${channel.name}`} style={{ flex: 1, padding: '10px 16px', borderRadius: 8, border: 'none', background: '#40444b', color: '#fff', fontSize: 16, boxSizing: 'border-box' }} />
         <button type="submit" style={{ padding: '10px 16px', borderRadius: 8, border: 'none', background: '#5865f2', color: '#fff', cursor: 'pointer', fontWeight: 'bold', fontSize: 16 }}>Send</button>
       </form>
