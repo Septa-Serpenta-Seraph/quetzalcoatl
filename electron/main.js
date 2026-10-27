@@ -85,8 +85,13 @@ function createWindow() {
 }
 
 function createTray() {
-  // Simple tray icon (would need an actual icon file in production)
-  tray = new Tray(path.join(__dirname, 'icon.png'));
+  // Try to create tray icon, skip if icon file doesn't exist
+  const iconPath = path.join(__dirname, 'icon.png');
+  if (!require('fs').existsSync(iconPath)) {
+    console.log('No tray icon found, skipping tray');
+    return;
+  }
+  tray = new Tray(iconPath);
   const contextMenu = Menu.buildFromTemplate([
     { label: 'Show Quetzalcoatl', click: () => { if (mainWindow) mainWindow.show(); } },
     { label: 'Open in Browser', click: () => shell.openExternal(BACKEND_URL) },
