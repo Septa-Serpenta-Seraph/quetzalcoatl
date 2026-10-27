@@ -40,9 +40,11 @@ function LoginScreen() {
   );
 }
 
-function ServerList({ servers, selectedServer, onSelect, onCreate }) {
+function ServerList({ servers, selectedServer, onSelect, onCreate, onJoin }) {
   const [showCreate, setShowCreate] = useState(false);
+  const [showJoin, setShowJoin] = useState(false);
   const [newName, setNewName] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
   const mobile = isMobile();
 
   const handleCreate = async (e) => {
@@ -51,6 +53,14 @@ function ServerList({ servers, selectedServer, onSelect, onCreate }) {
     await onCreate(newName.trim());
     setNewName('');
     setShowCreate(false);
+  };
+
+  const handleJoin = async (e) => {
+    if (e) e.preventDefault();
+    if (!inviteCode.trim()) return;
+    await onJoin(inviteCode.trim());
+    setInviteCode('');
+    setShowJoin(false);
   };
 
   if (mobile) {
@@ -64,10 +74,17 @@ function ServerList({ servers, selectedServer, onSelect, onCreate }) {
           </button>
         ))}
         <button onClick={() => setShowCreate(!showCreate)} style={{ width: 48, height: 48, borderRadius: '50%', background: '#36393f', border: 'none', cursor: 'pointer', fontSize: 24, color: '#3ba55c' }}>+</button>
+        <button onClick={() => setShowJoin(!showJoin)} style={{ width: 48, height: 48, borderRadius: '50%', background: '#36393f', border: 'none', cursor: 'pointer', fontSize: 18, color: '#5865f2' }}>→</button>
         {showCreate && (
           <div style={{ position: 'fixed', left: 10, top: 60, background: '#2f3136', padding: 15, borderRadius: 8, zIndex: 100, boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
             <input placeholder="Server name" value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleCreate(e); }} style={{ padding: 10, borderRadius: 4, border: 'none', background: '#202225', color: '#fff', marginBottom: 8, width: 150, fontSize: 16, boxSizing: 'border-box' }} />
             <button onClick={(e) => handleCreate(e)} style={{ width: '100%', padding: 10, borderRadius: 4, border: 'none', background: '#5865f2', color: '#fff', cursor: 'pointer', fontSize: 16 }}>Create</button>
+          </div>
+        )}
+        {showJoin && (
+          <div style={{ position: 'fixed', left: 10, top: 60, background: '#2f3136', padding: 15, borderRadius: 8, zIndex: 100, boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
+            <input placeholder="Invite code" value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleJoin(e); }} style={{ padding: 10, borderRadius: 4, border: 'none', background: '#202225', color: '#fff', marginBottom: 8, width: 150, fontSize: 16, boxSizing: 'border-box' }} />
+            <button onClick={(e) => handleJoin(e)} style={{ width: '100%', padding: 10, borderRadius: 4, border: 'none', background: '#5865f2', color: '#fff', cursor: 'pointer', fontSize: 16 }}>Join</button>
           </div>
         )}
       </div>
@@ -86,10 +103,17 @@ function ServerList({ servers, selectedServer, onSelect, onCreate }) {
       ))}
       <div style={{ height: 1, background: '#36393f', margin: '4px 12px' }} />
       <button onClick={() => setShowCreate(!showCreate)} style={{ margin: '2px 12px', padding: '10px 12px', borderRadius: 8, background: 'transparent', border: '1px dashed #3ba55c', cursor: 'pointer', fontSize: 14, color: '#3ba55c', textAlign: 'center' }}>+ New Server</button>
+      <button onClick={() => setShowJoin(!showJoin)} style={{ margin: '2px 12px', padding: '10px 12px', borderRadius: 8, background: 'transparent', border: '1px dashed #5865f2', cursor: 'pointer', fontSize: 14, color: '#5865f2', textAlign: 'center' }}>→ Join Server</button>
       {showCreate && (
         <div style={{ margin: '8px 12px', background: '#2f3136', padding: 12, borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
           <input placeholder="Server name" value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleCreate(e); }} style={{ padding: 8, borderRadius: 4, border: 'none', background: '#202225', color: '#fff', marginBottom: 8, width: '100%', fontSize: 14, boxSizing: 'border-box' }} />
           <button onClick={(e) => handleCreate(e)} style={{ width: '100%', padding: 8, borderRadius: 4, border: 'none', background: '#5865f2', color: '#fff', cursor: 'pointer', fontSize: 14 }}>Create</button>
+        </div>
+      )}
+      {showJoin && (
+        <div style={{ margin: '8px 12px', background: '#2f3136', padding: 12, borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
+          <input placeholder="Invite code" value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleJoin(e); }} style={{ padding: 8, borderRadius: 4, border: 'none', background: '#202225', color: '#fff', marginBottom: 8, width: '100%', fontSize: 14, boxSizing: 'border-box' }} />
+          <button onClick={(e) => handleJoin(e)} style={{ width: '100%', padding: 8, borderRadius: 4, border: 'none', background: '#5865f2', color: '#fff', cursor: 'pointer', fontSize: 14 }}>Join</button>
         </div>
       )}
     </div>
@@ -116,6 +140,7 @@ function ChannelList({ server, channels, selectedChannel, onSelect, onBack }) {
           <span>{server.name}</span>
           <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#b9bbbe', fontSize: 20, padding: 4 }}>←</button>
         </div>
+        <div style={{ padding: '4px 16px', fontSize: 12, color: '#8e9297' }}>Invite: {server.invite_code}</div>
         <div style={{ flex: 1, overflowY: 'auto', padding: 8 }}>
           {textChannels.map((c) => (
             <button key={c.id} onClick={() => onSelect(c)} style={{ display: 'block', width: '100%', padding: '10px 8px', borderRadius: 4, cursor: 'pointer', color: selectedChannel?.id === c.id ? '#fff' : '#8e9297', background: selectedChannel?.id === c.id ? '#393c43' : 'transparent', border: 'none', textAlign: 'left', fontSize: 14, minHeight: 44 }}>
@@ -133,6 +158,9 @@ function ChannelList({ server, channels, selectedChannel, onSelect, onBack }) {
   return (
     <div style={{ width: 260, height: '100%', background: '#2f3136', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', borderRight: '1px solid #1a1a1a' }}>
       <div style={{ padding: 16, borderBottom: '1px solid #202225', fontWeight: 'bold', color: '#fff' }}>{server.name}</div>
+      <div style={{ padding: '4px 16px 8px', fontSize: 12, color: '#8e9297', borderBottom: '1px solid #202225' }}>
+        Invite code: <span style={{ color: '#5865f2', fontWeight: 'bold', cursor: 'pointer' }} onClick={() => { navigator.clipboard?.writeText(server.invite_code); }} title="Click to copy">{server.invite_code}</span>
+      </div>
       <div style={{ flex: 1, overflowY: 'auto', padding: 8 }}>
         {textChannels.length > 0 && (
           <>
@@ -254,6 +282,7 @@ export default function App() {
   const [channels, setChannels] = useState([]);
   const [selectedChannel, setSelectedChannel] = useState(null);
   const [mobileView, setMobileView] = useState('servers');
+  const [joinError, setJoinError] = useState(null);
   const mobile = isMobile();
 
   useEffect(() => { init(); }, []);
@@ -275,6 +304,19 @@ export default function App() {
     setSelectedServer(server);
   };
 
+  const handleJoinServer = async (inviteCode) => {
+    setJoinError(null);
+    try {
+      const server = await api.joinServer(inviteCode);
+      // Refresh server list
+      const updated = await api.listServers();
+      setServers(updated);
+      setSelectedServer(server);
+    } catch (e) {
+      setJoinError(e.message);
+    }
+  };
+
   const handleSelectServer = (server) => {
     setSelectedServer(server);
     setSelectedChannel(null);
@@ -292,7 +334,7 @@ export default function App() {
     return (
       <div style={{ display: 'flex', height: '100vh', fontFamily: 'sans-serif', overflow: 'hidden' }}>
         {mobileView === 'servers' && (
-          <ServerList servers={servers} selectedServer={selectedServer} onSelect={handleSelectServer} onCreate={handleCreateServer} />
+          <ServerList servers={servers} selectedServer={selectedServer} onSelect={handleSelectServer} onCreate={handleCreateServer} onJoin={handleJoinServer} />
         )}
         {mobileView === 'channels' && (
           <ChannelList server={selectedServer} channels={channels} selectedChannel={selectedChannel} onSelect={handleSelectChannel} onBack={() => setMobileView('servers')} />
@@ -310,7 +352,7 @@ export default function App() {
   // Desktop: simple 3-column layout
   return (
     <div style={{ display: 'flex', height: '100vh', fontFamily: 'sans-serif', overflow: 'hidden' }}>
-      <ServerList servers={servers} selectedServer={selectedServer} onSelect={handleSelectServer} onCreate={handleCreateServer} />
+      <ServerList servers={servers} selectedServer={selectedServer} onSelect={handleSelectServer} onCreate={handleCreateServer} onJoin={handleJoinServer} />
       <ChannelList server={selectedServer} channels={channels} selectedChannel={selectedChannel} onSelect={handleSelectChannel} onBack={() => {}} />
       <MessageView channel={selectedChannel} user={user} onBack={() => {}} />
       <div style={{ position: 'fixed', top: 10, right: 10, zIndex: 20 }}>
