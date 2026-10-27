@@ -12,7 +12,13 @@ from sqlalchemy.orm import Session
 from models import get_db, User
 
 # Configuration
-SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-production-use-a-real-secret")
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError(
+        "SECRET_KEY environment variable must be set. "
+        "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+    )
+SECRET_KEY = str(SECRET_KEY)  # type narrowing for static analysis
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))  # 24 hours
 
@@ -56,7 +62,11 @@ def get_current_user(
     user_id = payload.get("sub")
     if user_id is None:
         raise credentials_exception
-    user = db.query(User).filter(User.id == int(user_id)).first()
+    try:
+        user_id_int = int(user_id)
+    except (ValueError, TypeError):
+        raise credentials_exception
+    user = db.query(User).filter(User.id == user_id_int).first()
     if user is None:
         raise credentials_exception
     return user

@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
 
-from models import get_db, User, Conversation, DirectMessage, DMAttachment
+from models import get_db, User, Conversation, DirectMessage, DMAttachment, conversation_participants
 from auth import get_current_user
 
 router = APIRouter(prefix="/api/dms", tags=["direct-messages"])
@@ -120,7 +120,12 @@ def get_dm_messages(
     conv = db.query(Conversation).filter(Conversation.id == conversation_id).first()
     if not conv:
         raise HTTPException(status_code=404, detail="Conversation not found")
-    if current_user not in conv.participants:
+    # Check if user is a participant
+    participant = db.query(conversation_participants).filter(
+        conversation_participants.c.user_id == current_user.id,
+        conversation_participants.c.conversation_id == conversation_id,
+    ).first()
+    if not participant:
         raise HTTPException(status_code=403, detail="Not a participant")
 
     query = db.query(DirectMessage).filter(DirectMessage.conversation_id == conversation_id)
@@ -155,7 +160,12 @@ def send_dm(
     conv = db.query(Conversation).filter(Conversation.id == conversation_id).first()
     if not conv:
         raise HTTPException(status_code=404, detail="Conversation not found")
-    if current_user not in conv.participants:
+    # Check if user is a participant
+    participant = db.query(conversation_participants).filter(
+        conversation_participants.c.user_id == current_user.id,
+        conversation_participants.c.conversation_id == conversation_id,
+    ).first()
+    if not participant:
         raise HTTPException(status_code=403, detail="Not a participant")
 
     msg = DirectMessage(

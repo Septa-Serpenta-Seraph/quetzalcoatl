@@ -1,12 +1,13 @@
 """Server (guild) API routes for Quetzalcoatl."""
 
 import secrets
+from sqlalchemy import or_
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 from typing import Optional, List
 
-from models import get_db, User, Server, Channel, Role
+from models import get_db, User, Server, Channel, Role, server_members
 from auth import get_current_user
 
 router = APIRouter(prefix="/api/servers", tags=["servers"])
@@ -66,7 +67,13 @@ def _server_to_response(server: Server) -> ServerResponse:
 
 
 def _check_membership(server: Server, user: User, db: Session) -> None:
-    if user not in server.members and server.owner_id != user.id:
+    if server.owner_id == user.id:
+        return
+    member = db.query(server_members).filter(
+        server_members.c.user_id == user.id,
+        server_members.c.server_id == server.id,
+    ).first()
+    if not member:
         raise HTTPException(status_code=403, detail="Not a member of this server")
 
 
@@ -105,15 +112,20 @@ def create_server(req: CreateServerRequest, current_user: User = Depends(get_cur
 
 @router.get("", response_model=List[ServerResponse])
 def list_servers(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    servers = current_user.servers + current_user.owned_servers
-    # Deduplicate
-    seen = set()
-    result = []
-    for s in servers:
-        if s.id not in seen:
-            seen.add(s.id)
-            result.append(_server_to_response(s))
-    return result
+    # Use a single query to get all servers the user is a member or owner of
+    servers = (
+        db.query(Server)
+        .outerjoin(server_members, Server.id == server_members.c.server_id)
+        .filter(
+            or_(
+                server_members.c.user_id == current_user.id,
+                Server.owner_id == current_user.id,
+            )
+        )
+        .distinct()
+        .all()
+    )
+    return [_server_to_response(s) for s in servers]
 
 
 @router.get("/{server_id}", response_model=ServerResponse)

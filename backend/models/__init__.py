@@ -3,6 +3,7 @@
 from .database import (
     Base, User, Server, Channel, Role, Message, Attachment,
     Reaction, DirectMessage, Conversation, DMAttachment,
+    server_members, user_roles, conversation_participants,
 )
 from . import database as _db_module
 

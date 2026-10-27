@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
 
-from models import get_db, User, Server, Channel, Message
+from models import get_db, User, Server, Channel, Message, server_members
 from auth import get_current_user, create_access_token, decode_token
 
 router = APIRouter(prefix="/api/bot", tags=["bot"])
@@ -75,9 +75,13 @@ def check_mention(content: str) -> bool:
 
 @router.post("/token", response_model=BotTokenResponse)
 def get_bot_token(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """Generate a JWT token for the bot user. Requires an authenticated human user."""
+    """Generate a JWT token for the bot user. Requires an authenticated human user who owns at least one server."""
     if current_user.is_bot:
         raise HTTPException(status_code=403, detail="Bots cannot generate bot tokens")
+    # Only server owners can generate bot tokens (prevents arbitrary users from impersonating the bot)
+    owned = db.query(Server).filter(Server.owner_id == current_user.id).first()
+    if not owned:
+        raise HTTPException(status_code=403, detail="Only server owners can generate bot tokens")
     bot = get_bot_user(db)
     token = create_access_token({"sub": str(bot.id)})
     return BotTokenResponse(
@@ -98,12 +102,17 @@ def post_bot_message(req: BotMessageRequest, current_user: User = Depends(get_cu
         raise HTTPException(status_code=404, detail="Channel not found")
 
     server = db.query(Server).filter(Server.id == channel.server_id).first()
-    if current_user not in server.members and server.owner_id != current_user.id:
-        # Bot might not be a member yet - add it
-        bot = get_bot_user(db)
-        if bot not in server.members and server.owner_id != bot.id:
-            server.members.append(bot)
-            db.commit()
+    if current_user.id != server.owner_id and not current_user.is_bot:  # bot can post to any channel
+        member = db.query(server_members).filter(
+            server_members.c.user_id == current_user.id,
+            server_members.c.server_id == server.id,
+        ).first()
+        if not member:
+            # Bot might not be a member yet - add it
+            bot = get_bot_user(db)
+            if bot not in server.members and server.owner_id != bot.id:
+                server.members.append(bot)
+                db.commit()
 
     msg = Message(
         channel_id=req.channel_id,
@@ -114,6 +123,32 @@ def post_bot_message(req: BotMessageRequest, current_user: User = Depends(get_cu
     db.add(msg)
     db.commit()
     db.refresh(msg)
+
+    # Broadcast to WebSocket subscribers so bot messages appear in real-time
+    try:
+        from gateway.websocket import manager
+        import asyncio
+        msg_data = {
+            "type": "message",
+            "id": msg.id,
+            "channel_id": msg.channel_id,
+            "author_id": msg.author_id,
+            "author_username": current_user.username,
+            "author_display_name": current_user.display_name,
+            "author_avatar": current_user.avatar_url,
+            "content": msg.content,
+            "reply_to_id": msg.reply_to_id,
+            "is_pinned": msg.is_pinned,
+            "is_edited": msg.is_edited,
+            "created_at": msg.created_at.isoformat(),
+            "updated_at": msg.updated_at.isoformat(),
+            "attachments": [],
+            "reactions": [],
+        }
+        # Schedule broadcast (fire and forget)
+        asyncio.ensure_future(manager.broadcast_to_channel(req.channel_id, msg_data))
+    except Exception:
+        pass  # WebSocket broadcast is best-effort
 
     return BotMessageResponse(
         id=msg.id,

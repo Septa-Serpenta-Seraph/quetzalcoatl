@@ -6,7 +6,7 @@ from typing import Dict, Set, Optional
 from fastapi import WebSocket, WebSocketDisconnect, Query
 from sqlalchemy.orm import Session
 
-from models import get_db, User, Channel, Server, Message
+from models import get_db, User, Channel, Server, Message, server_members
 from auth import decode_token
 
 
@@ -51,15 +51,21 @@ class ConnectionManager:
         """Send a message to all users subscribed to a channel."""
         if channel_id not in self.channel_subscribers:
             return
-        for user_id in self.channel_subscribers[channel_id]:
+        dead_connections = []
+        for user_id in list(self.channel_subscribers.get(channel_id, set())):
             if user_id == exclude_user:
                 continue
             if user_id in self.active_connections:
-                for ws in self.active_connections[user_id]:
+                for ws in list(self.active_connections[user_id]):
                     try:
                         await ws.send_json(message)
                     except Exception:
-                        pass
+                        dead_connections.append((user_id, ws))
+        # Clean up dead connections
+        for user_id, ws in dead_connections:
+            self.active_connections[user_id].discard(ws)
+            if not self.active_connections[user_id]:
+                del self.active_connections[user_id]
 
     async def send_to_user(self, user_id: int, message: dict):
         """Send a message to a specific user."""
@@ -93,10 +99,15 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
         await websocket.close(code=4001, reason="Invalid token")
         return
 
-    user_id = int(payload.get("sub"))
+    try:
+        user_id = int(payload.get("sub") or 0)
+    except (ValueError, TypeError):
+        await websocket.close(code=4001, reason="Invalid user ID")
+        return
     db = next(get_db())
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
+        db.close()
         await websocket.close(code=4001, reason="User not found")
         return
 
@@ -132,6 +143,10 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
                     await websocket.send_json({"type": "error", "message": "Missing channel_id or content"})
                     continue
 
+                if len(content) > 4000:
+                    await websocket.send_json({"type": "error", "message": "Message too long (max 4000 characters)"})
+                    continue
+
                 # Verify channel exists and user has access
                 channel = db.query(Channel).filter(Channel.id == channel_id).first()
                 if not channel:
@@ -139,9 +154,14 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
                     continue
 
                 server = db.query(Server).filter(Server.id == channel.server_id).first()
-                if user not in server.members and server.owner_id != user.id:
-                    await websocket.send_json({"type": "error", "message": "Not a member"})
-                    continue
+                if user.id != server.owner_id:
+                    member = db.query(server_members).filter(
+                        server_members.c.user_id == user.id,
+                        server_members.c.server_id == server.id,
+                    ).first()
+                    if not member:
+                        await websocket.send_json({"type": "error", "message": "Not a member"})
+                        continue
 
                 # Create message
                 msg = Message(

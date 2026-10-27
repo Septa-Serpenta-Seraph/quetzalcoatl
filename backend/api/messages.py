@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 from typing import Optional, List
 
-from models import get_db, User, Server, Channel, Message, Attachment, Reaction
+from models import get_db, User, Server, Channel, Message, Attachment, Reaction, server_members
 from auth import get_current_user
 
 router = APIRouter(prefix="/api", tags=["messages"])
@@ -93,8 +93,13 @@ def get_messages(
 
     # Check membership
     server = db.query(Server).filter(Server.id == channel.server_id).first()
-    if current_user not in server.members and server.owner_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not a member")
+    if current_user.id != server.owner_id:
+        member = db.query(server_members).filter(
+            server_members.c.user_id == current_user.id,
+            server_members.c.server_id == server.id,
+        ).first()
+        if not member:
+            raise HTTPException(status_code=403, detail="Not a member")
 
     query = db.query(Message).filter(Message.channel_id == channel_id)
     if before:
@@ -117,8 +122,13 @@ def create_message(
         raise HTTPException(status_code=404, detail="Channel not found")
 
     server = db.query(Server).filter(Server.id == channel.server_id).first()
-    if current_user not in server.members and server.owner_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not a member")
+    if current_user.id != server.owner_id:
+        member = db.query(server_members).filter(
+            server_members.c.user_id == current_user.id,
+            server_members.c.server_id == server.id,
+        ).first()
+        if not member:
+            raise HTTPException(status_code=403, detail="Not a member")
 
     if not req.content and not req.reply_to_id:
         # Allow empty content for now (attachments handled separately)

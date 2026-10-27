@@ -120,7 +120,7 @@ function ServerList({ servers, selectedServer, onSelect, onCreate, onJoin }) {
   );
 }
 
-function ChannelList({ server, channels, selectedChannel, onSelect, onBack, conversations = [], selectedConv = null, onSelectConv, onNewDM }) {
+function ChannelList({ server, channels, selectedChannel, onSelect, onBack, conversations = [], selectedConv = null, onSelectConv, onNewDM, user }) {
   if (!server && !conversations.length) {
     return (
       <div style={{ width: 260, height: '100%', background: '#2f3136', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8e9297', fontSize: 14, boxSizing: 'border-box', borderRight: '1px solid #1a1a1a' }}>
@@ -135,7 +135,7 @@ function ChannelList({ server, channels, selectedChannel, onSelect, onBack, conv
 
   const convName = (conv) => {
     if (conv.is_group) return conv.name || 'Group DM';
-    const other = conv.participants.find(p => p.id !== (JSON.parse(localStorage.getItem('quetzalcoatl_user') || '{}').id));
+    const other = conv.participants.find(p => p.id !== user?.id);
     return other ? (other.display_name || other.username) : 'DM';
   };
 
@@ -482,7 +482,7 @@ export default function App() {
           <ServerList servers={servers} selectedServer={selectedServer} onSelect={handleSelectServer} onCreate={handleCreateServer} onJoin={handleJoinServer} />
         )}
         {mobileView === 'channels' && (
-          <ChannelList server={selectedServer} channels={channels} selectedChannel={selectedChannel} onSelect={handleSelectChannel} onBack={() => setMobileView('servers')} conversations={conversations} selectedConv={selectedConv} onSelectConv={handleSelectConv} onNewDM={handleNewDM} />
+          <ChannelList server={selectedServer} channels={channels} selectedChannel={selectedChannel} onSelect={handleSelectChannel} onBack={() => setMobileView('servers')} conversations={conversations} selectedConv={selectedConv} onSelectConv={handleSelectConv} onNewDM={handleNewDM} user={user} />
         )}
         {mobileView === 'messages' && (
           dmMode ? <DMView conversation={selectedConv} user={user} onBack={() => setMobileView('channels')} /> : <MessageView channel={selectedChannel} user={user} onBack={() => setMobileView('channels')} />
@@ -498,7 +498,7 @@ export default function App() {
   return (
     <div style={{ display: 'flex', height: '100vh', fontFamily: 'sans-serif', overflow: 'hidden' }}>
       <ServerList servers={servers} selectedServer={selectedServer} onSelect={handleSelectServer} onCreate={handleCreateServer} onJoin={handleJoinServer} />
-      <ChannelList server={selectedServer} channels={channels} selectedChannel={selectedChannel} onSelect={handleSelectChannel} onBack={() => {}} conversations={conversations} selectedConv={selectedConv} onSelectConv={handleSelectConv} onNewDM={handleNewDM} />
+      <ChannelList server={selectedServer} channels={channels} selectedChannel={selectedChannel} onSelect={handleSelectChannel} onBack={() => {}} conversations={conversations} selectedConv={selectedConv} onSelectConv={handleSelectConv} onNewDM={handleNewDM} user={user} />
       {dmMode ? <DMView conversation={selectedConv} user={user} onBack={() => {}} /> : <MessageView channel={selectedChannel} user={user} onBack={() => {}} />}
       <div style={{ position: 'fixed', top: 10, right: 10, zIndex: 20 }}>
         <button onClick={logout} style={{ padding: '6px 12px', borderRadius: 4, border: 'none', background: '#f04747', color: '#fff', cursor: 'pointer' }}>Logout</button>
