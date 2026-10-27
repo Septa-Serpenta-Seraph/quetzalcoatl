@@ -52,23 +52,25 @@ function ServerList({ servers, selectedServer, onSelect, onCreate }) {
     setShowCreate(false);
   };
 
+  const width = mobile ? '100%' : 200;
+
   return (
-    <div style={{ width: mobile ? '100%' : 72, background: '#202225', padding: '12px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, overflowY: 'auto', position: 'relative', height: mobile ? '100%' : 'auto', boxSizing: 'border-box' }}>
-      <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#5865f2', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontWeight: 'bold', fontSize: 20, color: '#fff', userSelect: 'none', WebkitUserSelect: 'none', touchAction: 'manipulation' }} onClick={() => onSelect(null)}>
-        Q
+    <div style={{ width, background: '#202225', padding: '12px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, overflowY: 'auto', position: 'relative', height: mobile ? '100%' : 'auto', boxSizing: 'border-box', flexShrink: 0 }}>
+      <div style={{ width: mobile ? 48 : '90%', height: 48, borderRadius: '50%', background: '#5865f2', display: 'flex', alignItems: 'center', justifyContent: mobile ? 'center' : 'flex-start', cursor: 'pointer', fontWeight: 'bold', fontSize: mobile ? 20 : 16, color: '#fff', userSelect: 'none', WebkitUserSelect: 'none', touchAction: 'manipulation', paddingLeft: mobile ? 0 : 12, boxSizing: 'border-box' }} onClick={() => onSelect(null)}>
+        {mobile ? 'Q' : 'Home'}
       </div>
       <div style={{ width: 32, height: 2, background: '#36393f', borderRadius: 1 }} />
       {servers.map((s) => (
-        <div key={s.id} onClick={() => onSelect(s)} style={{ width: 48, height: 48, borderRadius: selectedServer?.id === s.id ? '16px' : '50%', background: '#36393f', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontWeight: 'bold', fontSize: 16, color: '#fff', transition: 'border-radius 0.2s', userSelect: 'none', WebkitUserSelect: 'none', touchAction: 'manipulation' }} title={s.name}>
-          {s.name.charAt(0).toUpperCase()}
+        <div key={s.id} onClick={() => onSelect(s)} style={{ width: mobile ? 48 : '90%', height: 48, borderRadius: selectedServer?.id === s.id ? '16px' : '50%', background: '#36393f', display: 'flex', alignItems: 'center', justifyContent: mobile ? 'center' : 'flex-start', cursor: 'pointer', fontWeight: 'bold', fontSize: 16, color: '#fff', transition: 'border-radius 0.2s', userSelect: 'none', WebkitUserSelect: 'none', touchAction: 'manipulation', paddingLeft: mobile ? 0 : 12, boxSizing: 'border-box' }} title={s.name}>
+          {mobile ? s.name.charAt(0).toUpperCase() : s.name}
         </div>
       ))}
       <div onClick={() => setShowCreate(!showCreate)} style={{ width: 48, height: 48, borderRadius: '50%', background: '#36393f', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 24, color: '#3ba55c', userSelect: 'none', WebkitUserSelect: 'none', touchAction: 'manipulation' }}>
         +
       </div>
       {showCreate && (
-        <div style={{ position: 'absolute', left: mobile ? 10 : 80, top: mobile ? 60 : 100, background: '#2f3136', padding: 15, borderRadius: 8, zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
-          <input placeholder="Server name" value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleCreate()} style={{ padding: 10, borderRadius: 4, border: 'none', background: '#202225', color: '#fff', marginBottom: 8, width: 150, fontSize: 16, boxSizing: 'border-box' }} />
+        <div style={{ position: 'absolute', left: mobile ? 10 : 210, top: mobile ? 60 : 10, background: '#2f3136', padding: 15, borderRadius: 8, zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.5)', minWidth: 200 }}>
+          <input placeholder="Server name" value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleCreate()} style={{ padding: 10, borderRadius: 4, border: 'none', background: '#202225', color: '#fff', marginBottom: 8, width: '100%', fontSize: 16, boxSizing: 'border-box' }} />
           <button onClick={handleCreate} style={{ width: '100%', padding: 10, borderRadius: 4, border: 'none', background: '#5865f2', color: '#fff', cursor: 'pointer', fontSize: 16, touchAction: 'manipulation' }}>Create</button>
         </div>
       )}
@@ -88,7 +90,7 @@ function ChannelList({ server, channels, selectedChannel, onSelect, onBack }) {
   const mobile = isMobile();
 
   return (
-    <div style={{ width: mobile ? '100%' : 240, background: '#2f3136', display: 'flex', flexDirection: 'column', height: '100%', boxSizing: 'border-box' }}>
+    <div style={{ width: mobile ? '100%' : 280, background: '#2f3136', display: 'flex', flexDirection: 'column', height: '100%', boxSizing: 'border-box', flexShrink: 0 }}>
       <div style={{ padding: 16, borderBottom: '1px solid #202225', fontWeight: 'bold', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span>{server.name}</span>
         {mobile && <span onClick={onBack} style={{ cursor: 'pointer', color: '#b9bbbe', fontSize: 20, padding: 4, touchAction: 'manipulation' }}>&larr;</span>}
@@ -284,11 +286,11 @@ export default function App() {
   }
 
   return (
-    <div style={{ display: 'flex', height: '100vh', fontFamily: 'sans-serif' }}>
+    <div style={{ display: 'flex', height: '100vh', fontFamily: 'sans-serif', overflow: 'hidden' }}>
       <ServerList servers={servers} selectedServer={selectedServer} onSelect={handleSelectServer} onCreate={handleCreateServer} />
       <ChannelList server={selectedServer} channels={channels} selectedChannel={selectedChannel} onSelect={handleSelectChannel} onBack={() => {}} />
       <MessageView channel={selectedChannel} user={user} onBack={() => {}} />
-      <div style={{ position: 'absolute', top: 10, right: 10 }}>
+      <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 20 }}>
         <button onClick={logout} style={{ padding: '6px 12px', borderRadius: 4, border: 'none', background: '#f04747', color: '#fff', cursor: 'pointer' }}>Logout</button>
       </div>
     </div>
