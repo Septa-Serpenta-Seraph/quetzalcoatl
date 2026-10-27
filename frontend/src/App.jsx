@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useAuthStore } from './stores/auth';
-import api from './api';
+import api, { getWsUrl } from './api';
 
 const isMobile = () => window.innerWidth < 768;
 
@@ -9,6 +9,8 @@ function LoginScreen() {
   const [password, setPassword] = useState('');
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
+  const [showServerSettings, setShowServerSettings] = useState(false);
+  const [serverUrl, setServerUrlInput] = useState(getServerUrl());
   const { login, register, loading, error } = useAuthStore();
 
   const handleSubmit = async (e) => {
@@ -20,21 +22,41 @@ function LoginScreen() {
     }
   };
 
+  const handleSaveServer = () => {
+    setServerUrl(serverUrl);
+    setShowServerSettings(false);
+    window.location.reload();
+  };
+
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#36393f', color: '#fff', padding: 20, boxSizing: 'border-box' }}>
       <form onSubmit={handleSubmit} style={{ background: '#2f3136', padding: 30, borderRadius: 8, width: '100%', maxWidth: 400 }}>
         <h1 style={{ textAlign: 'center', marginBottom: 20 }}>Quetzalcoatl</h1>
-        <h2 style={{ textAlign: 'center', marginBottom: 20, fontSize: 18 }}>{isRegister ? 'Create Account' : 'Welcome Back'}</h2>
-        {error && <div style={{ color: '#f04747', marginBottom: 10, textAlign: 'center' }}>{error}</div>}
-        <input type="text" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} style={{ width: '100%', padding: 12, marginBottom: 10, borderRadius: 4, border: 'none', background: '#202225', color: '#fff', fontSize: 16, boxSizing: 'border-box' }} />
-        {isRegister && <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} style={{ width: '100%', padding: 12, marginBottom: 10, borderRadius: 4, border: 'none', background: '#202225', color: '#fff', fontSize: 16, boxSizing: 'border-box' }} />}
-        <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} style={{ width: '100%', padding: 12, marginBottom: 20, borderRadius: 4, border: 'none', background: '#202225', color: '#fff', fontSize: 16, boxSizing: 'border-box' }} />
-        <button type="submit" disabled={loading} style={{ width: '100%', padding: 12, borderRadius: 4, border: 'none', background: '#5865f2', color: '#fff', cursor: 'pointer', fontWeight: 'bold', fontSize: 16 }}>
-          {loading ? 'Loading...' : (isRegister ? 'Register' : 'Login')}
-        </button>
-        <div style={{ textAlign: 'center', marginTop: 15, color: '#b9bbbe', cursor: 'pointer', padding: 10 }} onClick={() => setIsRegister(!isRegister)}>
-          {isRegister ? 'Already have an account? Login' : "Don't have an account? Register"}
-        </div>
+        {showServerSettings ? (
+          <div>
+            <h3 style={{ marginBottom: 10 }}>Server Settings</h3>
+            <input type="text" placeholder="Server URL (e.g., http://192.168.1.100:8000)" value={serverUrl} onChange={(e) => setServerUrlInput(e.target.value)} style={{ width: '100%', padding: 12, marginBottom: 10, borderRadius: 4, border: 'none', background: '#202225', color: '#fff', fontSize: 16, boxSizing: 'border-box' }} />
+            <button type="button" onClick={handleSaveServer} style={{ width: '100%', padding: 12, borderRadius: 4, border: 'none', background: '#3ba55c', color: '#fff', cursor: 'pointer', fontWeight: 'bold', fontSize: 16, marginBottom: 10 }}>Save & Reload</button>
+            <button type="button" onClick={() => setShowServerSettings(false)} style={{ width: '100%', padding: 12, borderRadius: 4, border: 'none', background: '#40444b', color: '#fff', cursor: 'pointer', fontSize: 16 }}>Cancel</button>
+          </div>
+        ) : (
+          <>
+            <h2 style={{ textAlign: 'center', marginBottom: 20, fontSize: 18 }}>{isRegister ? 'Create Account' : 'Welcome Back'}</h2>
+            {error && <div style={{ color: '#f04747', marginBottom: 10, textAlign: 'center' }}>{error}</div>}
+            <input type="text" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} style={{ width: '100%', padding: 12, marginBottom: 10, borderRadius: 4, border: 'none', background: '#202225', color: '#fff', fontSize: 16, boxSizing: 'border-box' }} />
+            {isRegister && <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} style={{ width: '100%', padding: 12, marginBottom: 10, borderRadius: 4, border: 'none', background: '#202225', color: '#fff', fontSize: 16, boxSizing: 'border-box' }} />}
+            <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} style={{ width: '100%', padding: 12, marginBottom: 20, borderRadius: 4, border: 'none', background: '#202225', color: '#fff', fontSize: 16, boxSizing: 'border-box' }} />
+            <button type="submit" disabled={loading} style={{ width: '100%', padding: 12, borderRadius: 4, border: 'none', background: '#5865f2', color: '#fff', cursor: 'pointer', fontWeight: 'bold', fontSize: 16 }}>
+              {loading ? 'Loading...' : (isRegister ? 'Register' : 'Login')}
+            </button>
+            <div style={{ textAlign: 'center', marginTop: 15, color: '#b9bbbe', cursor: 'pointer', padding: 10 }} onClick={() => setIsRegister(!isRegister)}>
+              {isRegister ? 'Already have an account? Login' : "Don't have an account? Register"}
+            </div>
+            <div style={{ textAlign: 'center', marginTop: 5, color: '#5865f2', cursor: 'pointer', padding: 5, fontSize: 12 }} onClick={() => setShowServerSettings(true)}>
+              ⚙️ Server Settings
+            </div>
+          </>
+        )}
       </form>
     </div>
   );
@@ -229,9 +251,7 @@ function DMView({ conversation, user, onBack }) {
     // WebSocket for real-time DM delivery
     const token = localStorage.getItem('quetzalcoatl_token');
     if (!token) return;
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsHost = window.location.host || 'localhost:8000';
-    const socket = new WebSocket(`${wsProtocol}//${wsHost}/ws?token=${token}`);
+    const socket = new WebSocket(`${getWsUrl()}/ws?token=${token}`);
     socket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
@@ -364,9 +384,7 @@ function MessageView({ channel, user, onBack }) {
     api.getMessages(channel.id).then(setMessages).catch(console.error);
 
     const token = localStorage.getItem('quetzalcoatl_token');
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsHost = window.location.host || 'localhost:8000';
-    const socket = new WebSocket(`${wsProtocol}//${wsHost}/ws?token=${token}`);
+    const socket = new WebSocket(`${getWsUrl()}/ws?token=${token}`);
     socket.onopen = () => {
       socket.send(JSON.stringify({ type: 'subscribe', channel_id: channel.id }));
     };

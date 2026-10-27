@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Quetzalcoatl</string>
+    <string name="title_activity_main">Quetzalcoatl</string>
+    <string name="package_name">com.quetzalcoatl.app</string>
+    <string name="custom_url_scheme">com.quetzalcoatl.app</string>
+</resources>

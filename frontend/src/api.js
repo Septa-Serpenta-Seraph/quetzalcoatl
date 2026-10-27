@@ -1,6 +1,21 @@
 // API client for Quetzalcoatl
 
-const API_BASE = import.meta.env.VITE_API_URL || (window.location.origin || 'http://localhost:8000');
+export function getServerUrl() {
+  return localStorage.getItem('quetzalcoatl_server_url') || import.meta.env.VITE_API_URL || (window.location.origin || 'http://localhost:8000');
+}
+
+export function setServerUrl(url) {
+  localStorage.setItem('quetzalcoatl_server_url', url.replace(/\/$/, ''));
+}
+
+export function getWsUrl() {
+  const url = getServerUrl();
+  const wsProtocol = url.startsWith('https') ? 'wss:' : 'ws:';
+  const host = url.replace(/^https?:\/\//, '');
+  return `${wsProtocol}//${host}`;
+}
+
+const API_BASE = getServerUrl();
 
 export function getToken() {
   return localStorage.getItem('quetzalcoatl_token');
