@@ -18,14 +18,65 @@ Built by **Adora** and **Narusya**. Named after the feathered serpent. 🐍
 - **WebSocket gateway** — connection management, channel subscriptions, broadcast
 
 ### 🔜 Planned
-- Direct messages (DMs) — models exist, API routes coming soon
-- Voice channels (WebRTC audio)
-- Bot API and webhooks
-- AI participant integration (Hermes as native channel member)
-- File attachments and image uploads
-- Custom emoji
-- Desktop app (Electron or Tauri)
-- Android APK (sideloadable, via Capacitor)
+
+#### Tier 1: Core (MVP — mostly done)
+- [x] User accounts (register, login, profile)
+- [x] Servers/guilds (create, join, leave)
+- [x] Text channels (create, delete, organize)
+- [x] Message sending (text, markdown, replies)
+- [x] Message editing/deletion
+- [x] Reactions (emoji)
+- [x] Roles and permissions (basic)
+- [x] Server invites (invite codes)
+- [x] Web client (browser-based, mobile-responsive)
+- [x] REST API
+- [x] WebSocket real-time gateway
+- [ ] Direct messages (1:1 and group DMs) — models exist, API routes coming
+- [ ] File attachments (images, documents, uploads)
+- [ ] Hermes integration (AI participant) — planned as native channel member
+
+#### Tier 2: Important (v1.0)
+- [ ] Voice channels (WebRTC audio)
+- [ ] Screen sharing
+- [ ] Threads (within channels)
+- [ ] Pinned messages
+- [ ] Message search (across channels/servers)
+- [ ] Custom emoji (server-specific)
+- [ ] Audit log
+- [ ] Notification settings (per-channel, per-server)
+- [ ] Desktop app (Electron or Tauri)
+- [ ] Bot API (application commands, slash commands)
+- [ ] Webhooks (incoming)
+- [ ] Typing indicators (backend exists, frontend integration)
+- [ ] Read receipts / unread counts
+- [ ] Link previews (unfurling)
+- [ ] User status (online, idle, DND, invisible)
+- [ ] Custom status messages
+
+#### Tier 3: Nice-to-Have (v2.0)
+- [ ] Forum channels (threaded discussions with tags)
+- [ ] Stage channels (audio events, speaker/audience model)
+- [ ] Events (scheduled)
+- [ ] Polls
+- [ ] Custom themes / CSS
+- [ ] Mobile apps (PWA first, native later)
+- [ ] Android APK (sideloadable, via Capacitor)
+- [ ] E2E encryption
+- [ ] Rich Presence (game activity)
+- [ ] Channel categories
+- [ ] Member screening (rules acceptance)
+- [ ] Verification levels
+- [ ] Timeout (temporary mute)
+- [ ] Ban/kick moderation
+- [ ] AutoMod (keyword filters, spam detection)
+- [ ] Server templates
+
+#### Tier 4: Skip (not needed for open source)
+- [ ] Monetization (Nitro, boosts, shop)
+- [ ] Age verification
+- [ ] Server discovery
+- [ ] Orbs/Quests
+- [ ] Profile frames/effects
 
 ## Quick Start
 
