@@ -334,6 +334,12 @@ quetzalcoatl/
 | `/api/messages/{id}` | DELETE | Delete message |
 | `/api/messages/{id}/reactions` | POST | Add reaction |
 | `/api/messages/{id}/reactions/{emoji}` | DELETE | Remove reaction |
+| `/api/bot/token` | POST | Get bot JWT token (requires auth) |
+| `/api/bot/message` | POST | Post message as bot |
+| `/api/bot/history/{channel_id}` | GET | Get channel history for bot context |
+| `/api/bot/pending` | GET | Get pending bot mentions |
+| `/api/bot/channels` | GET | List channels bot has access to |
+| `/api/bot/join/{server_id}` | POST | Add bot to a server |
 | `/ws?token=...` | WebSocket | Real-time gateway |
 
 ## WebSocket Protocol

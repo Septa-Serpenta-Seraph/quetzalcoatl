@@ -250,21 +250,29 @@ function MessageView({ channel, user, onBack }) {
         # {channel.name}
       </div>
       <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
-        {messages.map((m) => (
-          <div key={m.id} style={{ marginBottom: 12, display: 'flex', gap: 12 }}>
-            <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#5865f2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold', flexShrink: 0 }}>
-              {(m.author_display_name || m.author_username || '?').charAt(0).toUpperCase()}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                <span style={{ color: '#fff', fontWeight: 'bold' }}>{m.author_display_name || m.author_username}</span>
-                <span style={{ color: '#8e9297', fontSize: 12 }}>{new Date(m.created_at).toLocaleTimeString()}</span>
-                {m.is_edited && <span style={{ color: '#8e9297', fontSize: 10 }}>(edited)</span>}
+        {messages.map((m) => {
+          const isBot = m.author_username === 'narusya' || m.is_bot;
+          return (
+            <div key={m.id} style={{ marginBottom: 12, display: 'flex', gap: 12, background: isBot ? 'rgba(88,101,242,0.08)' : 'transparent', borderRadius: 8, padding: isBot ? 8 : 0 }}>
+              <div style={{ width: 40, height: 40, borderRadius: '50%', background: isBot ? '#7289da' : '#5865f2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold', flexShrink: 0, fontSize: isBot ? 18 : 14 }}>
+                {isBot ? '🐍' : (m.author_display_name || m.author_username || '?').charAt(0).toUpperCase()}
               </div>
-              <div style={{ color: '#dcddde', marginTop: 2, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{m.content}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ color: isBot ? '#7289da' : '#fff', fontWeight: 'bold' }}>{m.author_display_name || m.author_username}</span>
+                  {isBot && <span style={{ background: '#5865f2', color: '#fff', fontSize: 10, padding: '1px 6px', borderRadius: 4, fontWeight: 'bold' }}>BOT</span>}
+                  <span style={{ color: '#8e9297', fontSize: 12 }}>{new Date(m.created_at).toLocaleTimeString()}</span>
+                  {m.is_edited && <span style={{ color: '#8e9297', fontSize: 10 }}>(edited)</span>}
+                </div>
+                <div style={{ color: '#dcddde', marginTop: 2, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                  {(m.content || '').split(/(@\w+)/g).map((part, i) =>
+                    part.startsWith('@') ? <span key={i} style={{ background: 'rgba(88,101,242,0.3)', color: '#dee0fc', borderRadius: 3, padding: '0 2px' }}>{part}</span> : part
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         <div ref={messagesEndRef} />
       </div>
       <form onSubmit={handleSend} style={{ padding: 12, borderTop: '1px solid #202225', display: 'flex', gap: 8 }}>
