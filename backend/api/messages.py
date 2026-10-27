@@ -14,6 +14,7 @@ router = APIRouter(prefix="/api", tags=["messages"])
 class CreateMessageRequest(BaseModel):
     content: Optional[str] = Field(None, max_length=4000)
     reply_to_id: Optional[int] = None
+    attachments: Optional[List[dict]] = None  # List of {filename, url, size, content_type}
 
 
 class AttachmentResponse(BaseModel):
@@ -127,6 +128,73 @@ def get_messages_since(
         }
         for m in messages
     ]
+import os
+import shutil
+import uuid
+from fastapi import UploadFile, File
+
+# Upload directory (relative to project root, not this file)
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+UPLOAD_DIR = os.path.join(PROJECT_ROOT, "uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+# Allowed file types and max size
+ALLOWED_EXTENSIONS = {
+    "image/jpeg", "image/png", "image/gif", "image/webp",
+    "application/pdf", "text/plain", "text/markdown",
+    "application/json", "application/zip",
+    "video/mp4", "audio/mpeg", "audio/ogg",
+}
+MAX_FILE_SIZE = 25 * 1024 * 1024  # 25MB
+
+
+@router.post("/channels/{channel_id}/upload")
+async def upload_file(
+    channel_id: int,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Upload a file attachment to a channel. Returns file info for message attachment."""
+    channel = db.query(Channel).filter(Channel.id == channel_id).first()
+    if not channel:
+        raise HTTPException(status_code=404, detail="Channel not found")
+
+    server = db.query(Server).filter(Server.id == channel.server_id).first()
+    if current_user.id != server.owner_id:
+        member = db.query(server_members).filter(
+            server_members.c.user_id == current_user.id,
+            server_members.c.server_id == server.id,
+        ).first()
+        if not member:
+            raise HTTPException(status_code=403, detail="Not a member")
+
+    # Validate content type
+    content_type = file.content_type or "application/octet-stream"
+    if content_type not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail=f"File type not allowed: {content_type}")
+
+    # Read file content
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=413, detail=f"File too large (max {MAX_FILE_SIZE // (1024*1024)}MB)")
+
+    # Generate unique filename
+    ext = os.path.splitext(file.filename or "file")[1]
+    unique_name = f"{uuid.uuid4().hex}{ext}"
+    file_path = os.path.join(UPLOAD_DIR, unique_name)
+
+    with open(file_path, "wb") as f:
+        f.write(content)
+
+    file_url = f"/uploads/{unique_name}"
+
+    return {
+        "filename": file.filename or "file",
+        "url": file_url,
+        "size": len(content),
+        "content_type": content_type,
+    }
 @router.get("/channels/{channel_id}/messages", response_model=List[MessageResponse])
 def get_messages(
     channel_id: int,
@@ -191,6 +259,21 @@ def create_message(
     db.add(msg)
     db.commit()
     db.refresh(msg)
+
+    # Handle attachments
+    if req.attachments:
+        for att in req.attachments:
+            attachment = Attachment(
+                message_id=msg.id,
+                filename=att.get("filename", "file"),
+                url=att.get("url", ""),
+                size=att.get("size", 0),
+                content_type=att.get("content_type"),
+            )
+            db.add(attachment)
+        db.commit()
+        db.refresh(msg)
+
     return _message_to_response(msg, db)
 
 

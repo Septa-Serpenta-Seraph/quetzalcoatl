@@ -188,7 +188,7 @@ graph LR
 - [x] REST API
 - [x] WebSocket real-time gateway
 - [ ] Direct messages (1:1 and group DMs) — models exist (DirectMessage, Conversation, DMAttachment), API routes coming
-- [ ] File attachments (images, documents, uploads)
+- [x] File attachments (images, documents, uploads)
 - [ ] Hermes integration (AI participant) — planned as native channel member
 - [ ] Invite expiry + revocation (invite rot is the first moderation problem)
 - [x] Sync-after-gap (message reconciliation on WebSocket reconnect — "what did I miss while the socket was dead")
@@ -333,6 +333,7 @@ quetzalcoatl/
 | `/api/channels/{id}/messages` | GET | List messages (paginated) |
 | `/api/channels/{id}/messages/since/{last_id}` | GET | Sync-after-gap: messages since last_seen_id |
 | `/api/channels/{id}/messages` | POST | Send message |
+| `/api/channels/{id}/upload` | POST | Upload file attachment |
 | `/api/messages/{id}` | PATCH | Edit message |
 | `/api/messages/{id}` | DELETE | Delete message |
 | `/api/messages/{id}/reactions` | POST | Add reaction |

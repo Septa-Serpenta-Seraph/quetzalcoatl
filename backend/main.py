@@ -65,6 +65,12 @@ def startup():
     bot = get_bot_user(db)
     db.close()
 
+# Serve uploaded files (relative to project root)
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+uploads_dir = os.path.join(PROJECT_ROOT, "uploads")
+os.makedirs(uploads_dir, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
+
 # Serve frontend (if built)
 frontend_dir = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
 if os.path.exists(frontend_dir):
