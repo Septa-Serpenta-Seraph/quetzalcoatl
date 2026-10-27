@@ -4,6 +4,162 @@ Self-hosted, open-source messaging platform. Discord-like features, mesh-network
 
 Built by **Adora** and **Narusya**. Named after the feathered serpent. 🐍
 
+## Architecture
+
+```mermaid
+graph TB
+    subgraph Clients["Clients"]
+        WEB["Web App<br/>(React + Vite)"]
+        PWA["PWA<br/>(Mobile Install)"]
+        DESK["Desktop App<br/>(Planned: Electron)"]
+    end
+
+    subgraph Gateway["Real-Time Gateway"]
+        WS["WebSocket Server<br/>(FastAPI)"]
+        CM["Connection Manager<br/>(Subscriptions, Presence)"]
+    end
+
+    subgraph Backend["Backend (FastAPI)"]
+        AUTH["Auth<br/>(JWT + bcrypt)"]
+        SRV["Servers API<br/>(CRUD, Invites)"]
+        MSG["Messages API<br/>(CRUD, Reactions)"]
+        BOT["Bot API<br/>(Planned)"]
+    end
+
+    subgraph Data["Data Layer"]
+        DB["SQLite<br/>(Users, Servers, Channels, Messages)"]
+        FS["File Storage<br/>(Attachments)"]
+    end
+
+    subgraph AI["AI Integration (Planned)"]
+        HERMES["Hermes / Narusya<br/>(AI Participant)"]
+    end
+
+    WEB --> WS
+    PWA --> WS
+    DESK --> WS
+    WS --> CM
+    CM --> MSG
+    WEB --> AUTH
+    WEB --> SRV
+    WEB --> MSG
+    SRV --> DB
+    MSG --> DB
+    AUTH --> DB
+    HERMES -.->|Planned| WS
+    HERMES -.->|Planned| MSG
+
+    style Clients fill:#1a1a2e,stroke:#5865f2,color:#fff
+    style Gateway fill:#1a1a2e,stroke:#3ba55c,color:#fff
+    style Backend fill:#1a1a2e,stroke:#f04747,color:#fff
+    style Data fill:#1a1a2e,stroke:#ffd8a8,color:#fff
+    style AI fill:#1a1a2e,stroke:#d0bfff,color:#fff
+```
+
+## Data Model
+
+```mermaid
+erDiagram
+    User ||--o{ Server : owns
+    User }o--o{ Server : "member of"
+    Server ||--o{ Channel : has
+    Server ||--o{ Role : has
+    Channel ||--o{ Message : contains
+    User ||--o{ Message : authors
+    Message ||--o{ Reaction : has
+    Message ||--o{ Attachment : has
+    User }o--o{ Role : assigned
+
+    User {
+        int id PK
+        string username
+        string email
+        string password_hash
+        string display_name
+        bool is_bot
+        string status
+    }
+
+    Server {
+        int id PK
+        string name
+        string invite_code
+        int owner_id FK
+    }
+
+    Channel {
+        int id PK
+        int server_id FK
+        string name
+        string type
+        int position
+    }
+
+    Message {
+        int id PK
+        int channel_id FK
+        int author_id FK
+        text content
+        bool is_edited
+        datetime created_at
+    }
+
+    Reaction {
+        int id PK
+        int message_id FK
+        int user_id FK
+        string emoji
+    }
+```
+
+## Feature Roadmap
+
+```mermaid
+graph LR
+    subgraph Done["Done"]
+        A1[Auth]
+        A2[Servers]
+        A3[Channels]
+        A4[Messages]
+        A5[Reactions]
+        A6[WebSocket]
+        A7[PWA]
+        A8[Invites]
+    end
+
+    subgraph Tier1["Tier 1: Core (MVP)"]
+        B1[Direct Messages]
+        B2[File Attachments]
+        B3[Hermes AI]
+    end
+
+    subgraph Tier2["Tier 2: v1.0"]
+        C1[Voice/Video]
+        C2[Threads]
+        C3[Search]
+        C4[Desktop App]
+        C5[Bot API]
+        C6[Webhooks]
+    end
+
+    subgraph Tier3["Tier 3: v2.0"]
+        D1[Forums]
+        D2[Stage Channels]
+        D3[Polls]
+        D4[Themes]
+        D5[E2E Encryption]
+    end
+
+    Done --> Tier1
+    Tier1 --> Tier2
+    Tier2 --> Tier3
+
+    style Done fill:#b2f2bb,stroke:#2f9e44,color:#000
+    style Tier1 fill:#a5d8ff,stroke:#1971c2,color:#000
+    style Tier2 fill:#ffd8a8,stroke:#e8590c,color:#000
+    style Tier3 fill:#d0bfff,stroke:#7950f2,color:#000
+```
+
 ## Features
 
 ### ✅ Implemented
