@@ -120,7 +120,9 @@ function MessageView({ channel, user }) {
     api.getMessages(channel.id).then(setMessages).catch(console.error);
 
     const token = localStorage.getItem('quetzalcoatl_token');
-    const socket = new WebSocket(`ws://localhost:8000/ws?token=${token}`);
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const wsHost = window.location.host || 'localhost:8000';
+const socket = new WebSocket(`${wsProtocol}//${wsHost}/ws?token=${token}`);
     socket.onopen = () => {
       socket.send(JSON.stringify({ type: 'subscribe', channel_id: channel.id }));
     };
