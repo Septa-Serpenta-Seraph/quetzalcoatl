@@ -225,6 +225,49 @@ function DMView({ conversation, user, onBack }) {
     if (!conversation) return;
     setMessages([]);
     api.getDMMessages(conversation.id).then(setMessages).catch(console.error);
+
+    // WebSocket for real-time DM delivery
+    const token = localStorage.getItem('quetzalcoatl_token');
+    if (!token) return;
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsHost = window.location.host || 'localhost:8000';
+    const socket = new WebSocket(`${wsProtocol}//${wsHost}/ws?token=${token}`);
+    socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'dm' && data.conversation_id === conversation.id) {
+          setMessages((prev) => {
+            // Avoid duplicates
+            if (prev.some((m) => m.id === data.id)) return prev;
+            return [...prev, {
+              id: data.id,
+              conversation_id: data.conversation_id,
+              author_id: data.author_id,
+              author_username: data.author_username,
+              author_display_name: data.author_display_name,
+              content: data.content,
+              created_at: data.created_at,
+              updated_at: data.updated_at,
+              attachments: [],
+            }];
+          });
+        }
+      } catch (e) {
+        console.error('WS parse error:', e);
+      }
+    };
+    socket.onerror = (err) => console.error('DM WebSocket error:', err);
+    socket.onclose = (event) => {
+      if (event.code !== 1000) {
+        console.warn('DM WebSocket closed:', event.code, event.reason);
+        setTimeout(() => {
+          if (conversation) {
+            api.getDMMessages(conversation.id).then(setMessages).catch(console.error);
+          }
+        }, 1000);
+      }
+    };
+    return () => socket.close();
   }, [conversation]);
 
   useEffect(() => {
@@ -335,7 +378,15 @@ function MessageView({ channel, user, onBack }) {
     };
     socket.onerror = (err) => console.error('WebSocket error:', err);
     socket.onclose = (event) => {
-      if (event.code !== 1000) console.warn('WebSocket closed:', event.code, event.reason);
+      if (event.code !== 1000) {
+        console.warn('WebSocket closed:', event.code, event.reason);
+        // Sync missed messages on reconnect
+        setTimeout(() => {
+          if (channel) {
+            api.getMessages(channel.id).then(setMessages).catch(console.error);
+          }
+        }, 1000);
+      }
     };
     setWs(socket);
     return () => socket.close();
