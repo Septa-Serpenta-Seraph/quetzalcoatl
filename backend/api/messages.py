@@ -79,6 +79,54 @@ def _message_to_response(msg: Message, db: Session) -> MessageResponse:
     )
 
 
+@router.get("/channels/{channel_id}/messages/since/{last_seen_id}")
+def get_messages_since(
+    channel_id: int,
+    last_seen_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Sync-after-gap: get all messages since last_seen_id. For reconnect reconciliation."""
+    channel = db.query(Channel).filter(Channel.id == channel_id).first()
+    if not channel:
+        raise HTTPException(status_code=404, detail="Channel not found")
+
+    server = db.query(Server).filter(Server.id == channel.server_id).first()
+    if current_user.id != server.owner_id:
+        member = db.query(server_members).filter(
+            server_members.c.user_id == current_user.id,
+            server_members.c.server_id == server.id,
+        ).first()
+        if not member:
+            raise HTTPException(status_code=403, detail="Not a member")
+
+    messages = (
+        db.query(Message)
+        .filter(Message.channel_id == channel_id)
+        .filter(Message.id > last_seen_id)
+        .order_by(Message.created_at.asc())
+        .limit(200)
+        .all()
+    )
+
+    return [
+        {
+            "id": m.id,
+            "channel_id": m.channel_id,
+            "author_id": m.author_id,
+            "author_username": m.author.username if m.author else "unknown",
+            "author_display_name": m.author.display_name if m.author else None,
+            "content": m.content,
+            "reply_to_id": m.reply_to_id,
+            "is_pinned": m.is_pinned,
+            "is_edited": m.is_edited,
+            "created_at": m.created_at.isoformat(),
+            "updated_at": m.updated_at.isoformat(),
+            "attachments": [{"id": a.id, "filename": a.filename, "url": a.url, "content_type": a.content_type, "size": a.size} for a in m.attachments],
+            "reactions": [{"emoji": r.emoji, "user_id": r.user_id} for r in m.reactions],
+        }
+        for m in messages
+    ]
 @router.get("/channels/{channel_id}/messages", response_model=List[MessageResponse])
 def get_messages(
     channel_id: int,

@@ -205,6 +205,69 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
                         exclude_user=user_id,
                     )
 
+            elif msg_type == "sync":
+                channel_id = data.get("channel_id")
+                last_seen_id = data.get("last_seen_message_id", 0)
+
+                if not channel_id:
+                    await websocket.send_json({"type": "error", "message": "Missing channel_id for sync"})
+                    continue
+
+                # Verify channel exists and user has access
+                channel = db.query(Channel).filter(Channel.id == channel_id).first()
+                if not channel:
+                    await websocket.send_json({"type": "error", "message": "Channel not found"})
+                    continue
+
+                server = db.query(Server).filter(Server.id == channel.server_id).first()
+                if user.id != server.owner_id:
+                    member = db.query(server_members).filter(
+                        server_members.c.user_id == user.id,
+                        server_members.c.server_id == server.id,
+                    ).first()
+                    if not member:
+                        await websocket.send_json({"type": "error", "message": "Not a member"})
+                        continue
+
+                # Fetch all messages since last_seen_id
+                messages = (
+                    db.query(Message)
+                    .filter(Message.channel_id == channel_id)
+                    .filter(Message.id > last_seen_id)
+                    .order_by(Message.created_at.asc())
+                    .limit(200)
+                    .all()
+                )
+
+                # Build response
+                missed = []
+                for m in messages:
+                    missed.append({
+                        "type": "message",
+                        "id": m.id,
+                        "channel_id": m.channel_id,
+                        "author_id": m.author_id,
+                        "author_username": m.author.username if m.author else "unknown",
+                        "author_display_name": m.author.display_name if m.author else None,
+                        "author_avatar": m.author.avatar_url if m.author else None,
+                        "content": m.content,
+                        "reply_to_id": m.reply_to_id,
+                        "is_pinned": m.is_pinned,
+                        "is_edited": m.is_edited,
+                        "created_at": m.created_at.isoformat(),
+                        "updated_at": m.updated_at.isoformat(),
+                        "attachments": [{"id": a.id, "filename": a.filename, "url": a.url, "content_type": a.content_type, "size": a.size} for a in m.attachments],
+                        "reactions": [{"emoji": r.emoji, "user_id": r.user_id} for r in m.reactions],
+                    })
+
+                await websocket.send_json({
+                    "type": "sync_response",
+                    "channel_id": channel_id,
+                    "last_seen_message_id": last_seen_id,
+                    "missed_count": len(missed),
+                    "messages": missed,
+                })
+
             elif msg_type == "ping":
                 await websocket.send_json({"type": "pong"})
 

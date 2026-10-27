@@ -191,7 +191,7 @@ graph LR
 - [ ] File attachments (images, documents, uploads)
 - [ ] Hermes integration (AI participant) — planned as native channel member
 - [ ] Invite expiry + revocation (invite rot is the first moderation problem)
-- [ ] Sync-after-gap (message reconciliation on WebSocket reconnect — "what did I miss while the socket was dead")
+- [x] Sync-after-gap (message reconciliation on WebSocket reconnect — "what did I miss while the socket was dead")
 
 #### Tier 2: Important (v1.0)
 - [ ] Voice channels (WebRTC audio)
@@ -331,6 +331,7 @@ quetzalcoatl/
 | `/api/servers/{id}/channels` | POST | Create channel |
 | `/api/servers/join/{code}` | POST | Join server via invite code |
 | `/api/channels/{id}/messages` | GET | List messages (paginated) |
+| `/api/channels/{id}/messages/since/{last_id}` | GET | Sync-after-gap: messages since last_seen_id |
 | `/api/channels/{id}/messages` | POST | Send message |
 | `/api/messages/{id}` | PATCH | Edit message |
 | `/api/messages/{id}` | DELETE | Delete message |
@@ -352,6 +353,7 @@ Connect to `/ws?token=<jwt>` and send JSON messages:
 { "type": "subscribe", "channel_id": 1 }
 { "type": "message", "channel_id": 1, "content": "Hello!" }
 { "type": "typing", "channel_id": 1 }
+{ "type": "sync", "channel_id": 1, "last_seen_message_id": 42 }
 { "type": "ping" }
 ```
 
@@ -361,6 +363,7 @@ Server broadcasts:
 { "type": "subscribed", "channel_id": 1 }
 { "type": "typing", "user_id": 1, "channel_id": 1 }
 { "type": "pong" }
+{ "type": "sync_response", "channel_id": 1, "missed_count": 3, "messages": [...] }
 ```
 
 ## Design Tensions
